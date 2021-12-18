@@ -230,8 +230,7 @@ def apply_box_deltas_graph(boxes, deltas):
     x1 = center_x - 0.5 * width
     y2 = y1 + height
     x2 = x1 + width
-    result = tf.stack([y1, x1, y2, x2], axis=1, name="apply_box_deltas_out")
-    return result
+    return tf.stack([y1, x1, y2, x2], axis=1, name="apply_box_deltas_out")
 
 
 def clip_boxes_graph(boxes, window):
@@ -496,8 +495,7 @@ def overlaps_graph(boxes1, boxes2):
     union = b1_area + b2_area - intersection
     # 4. Compute IoU and reshape to [boxes1, boxes2]
     iou = intersection / union
-    overlaps = tf.reshape(iou, [tf.shape(input=boxes1)[0], tf.shape(input=boxes2)[0]])
-    return overlaps
+    return tf.reshape(iou, [tf.shape(input=boxes1)[0], tf.shape(input=boxes2)[0]])
 
 
 def detection_targets_graph(proposals, gt_class_ids, gt_boxes, gt_masks, config):
@@ -679,12 +677,11 @@ class DetectionTargetLayer(KL.Layer):
         # Slice the batch and run a graph for each slice
         # TODO: Rename target_bbox to target_deltas for clarity
         names = ["rois", "target_class_ids", "target_bbox", "target_mask"]
-        outputs = utils.batch_slice(
+        return utils.batch_slice(
             [proposals, gt_class_ids, gt_boxes, gt_masks],
             lambda w, x, y, z: detection_targets_graph(
                 w, x, y, z, self.config),
             self.config.IMAGES_PER_GPU, names=names)
-        return outputs
 
     def compute_output_shape(self, input_shape):
         return [
@@ -1045,8 +1042,7 @@ def smooth_l1_loss(y_true, y_pred):
     """
     diff = K.abs(y_true - y_pred)
     less_than_one = K.cast(K.less(diff, 1.0), "float32")
-    loss = (less_than_one * 0.5 * diff**2) + (1 - less_than_one) * (diff - 0.5)
-    return loss
+    return (less_than_one * 0.5 * diff**2) + (1 - less_than_one) * (diff - 0.5)
 
 
 def rpn_class_loss_graph(rpn_match, rpn_class_logits):
@@ -1535,9 +1531,8 @@ def build_rpn_targets(image_shape, anchors, gt_class_ids, gt_boxes, config):
     # For positive anchors, compute shift and scale needed to transform them
     # to match the corresponding GT boxes.
     ids = np.where(rpn_match == 1)[0]
-    ix = 0  # index into rpn_bbox
     # TODO: use box_refinement() rather than duplicating the code here
-    for i, a in zip(ids, anchors[ids]):
+    for ix, (i, a) in enumerate(zip(ids, anchors[ids])):
         # Closest gt box (it might have IoU < 0.7)
         gt = gt_boxes[anchor_iou_argmax[i]]
 
@@ -1562,8 +1557,6 @@ def build_rpn_targets(image_shape, anchors, gt_class_ids, gt_boxes, config):
         ]
         # Normalize
         rpn_bbox[ix] /= config.RPN_BBOX_STD_DEV
-        ix += 1
-
     return rpn_match, rpn_bbox
 
 
@@ -1617,14 +1610,14 @@ def generate_random_rois(image_shape, count, gt_class_ids, gt_boxes):
 
     # Generate random ROIs anywhere in the image (10% of count)
     remaining_count = count - (rois_per_box * gt_boxes.shape[0])
+    # Filter out zero area boxes
+    threshold = 1
     # To avoid generating boxes with zero area, we generate double what
     # we need and filter out the extra. If we get fewer valid boxes
     # than we need, we loop and try again.
     while True:
         y1y2 = np.random.randint(0, image_shape[0], (remaining_count * 2, 2))
         x1x2 = np.random.randint(0, image_shape[1], (remaining_count * 2, 2))
-        # Filter out zero area boxes
-        threshold = 1
         y1y2 = y1y2[np.abs(y1y2[:, 0] - y1y2[:, 1]) >=
                     threshold][:remaining_count]
         x1x2 = x1x2[np.abs(x1x2[:, 0] - x1x2[:, 1]) >=
