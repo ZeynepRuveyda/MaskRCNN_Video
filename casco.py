@@ -7,6 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1lc143a2R4knBq40FlbOXKECbZRa8M4oi
 """
 
+
 import os
 import numpy as np
 import skimage.draw
@@ -46,7 +47,7 @@ class CascoConfig(Config):
     # This is how often validation is run. If you are using too much hard drive space
     # on saved models (in the MODEL_DIR), try making this value larger.
     VALIDATION_STEPS = 5
-    
+
     # Matterport originally used resnet101, but I downsized to fit it on my graphics card
     BACKBONE = 'resnet50'
 
@@ -56,7 +57,7 @@ class CascoConfig(Config):
     MAX_GT_INSTANCES = 50 
     POST_NMS_ROIS_INFERENCE = 500 
     POST_NMS_ROIS_TRAINING = 1000 
-    
+
 config = CascoConfig()
 config.display()
 
@@ -66,7 +67,7 @@ class InferenceConfig(CascoConfig):
     #IMAGE_MIN_DIM = 512
     #IMAGE_MAX_DIM = 512
     DETECTION_MIN_CONFIDENCE = min_confidence
-    
+
 
 inference_config = InferenceConfig()
 
@@ -86,10 +87,11 @@ model.load_weights(model_path, by_name=True)
 
 import skimage
 
-image_paths = []
-for filename in os.listdir(real_test_dir):
-    if os.path.splitext(filename)[1].lower() in ['.png', '.jpg', '.jpeg']:
-        image_paths.append(os.path.join(real_test_dir, filename))
+image_paths = [
+    os.path.join(real_test_dir, filename)
+    for filename in os.listdir(real_test_dir)
+    if os.path.splitext(filename)[1].lower() in ['.png', '.jpg', '.jpeg']
+]
 
 for image_path in image_paths:
     img = skimage.io.imread(image_path)

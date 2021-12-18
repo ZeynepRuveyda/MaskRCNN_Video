@@ -109,7 +109,7 @@ class CocoDataset(utils.Dataset):
             self.auto_download(dataset_dir, subset, year)
 
         coco = COCO("{}/annotations/instances_{}{}.json".format(dataset_dir, subset, year))
-        if subset == "minival" or subset == "valminusminival":
+        if subset in ["minival", "valminusminival"]:
             subset = "val"
         image_dir = "{}/{}{}".format(dataset_dir, subset, year)
 
@@ -156,7 +156,7 @@ class CocoDataset(utils.Dataset):
         """
 
         # Setup paths and file names
-        if dataType == "minival" or dataType == "valminusminival":
+        if dataType in ["minival", "valminusminival"]:
             imgDir = "{}/{}{}".format(dataDir, "val", dataYear)
             imgZipFile = "{}/{}{}.zip".format(dataDir, "val", dataYear)
             imgURL = "http://images.cocodataset.org/zips/{}{}.zip".format("val", dataYear)
@@ -260,14 +260,12 @@ class CocoDataset(utils.Dataset):
                 instance_masks.append(m)
                 class_ids.append(class_id)
 
-        # Pack instance masks into an array
-        if class_ids:
-            mask = np.stack(instance_masks, axis=2).astype(np.bool)
-            class_ids = np.array(class_ids, dtype=np.int32)
-            return mask, class_ids
-        else:
+        if not class_ids:
             # Call super class to return an empty mask
             return super(CocoDataset, self).load_mask(image_id)
+        mask = np.stack(instance_masks, axis=2).astype(np.bool)
+        class_ids = np.array(class_ids, dtype=np.int32)
+        return mask, class_ids
 
     def image_reference(self, image_id):
         """Return a link to the image in the COCO Website."""
@@ -289,14 +287,12 @@ class CocoDataset(utils.Dataset):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
             rles = maskUtils.frPyObjects(segm, height, width)
-            rle = maskUtils.merge(rles)
+            return maskUtils.merge(rles)
         elif isinstance(segm['counts'], list):
             # uncompressed RLE
-            rle = maskUtils.frPyObjects(segm, height, width)
+            return maskUtils.frPyObjects(segm, height, width)
         else:
-            # rle
-            rle = ann['segmentation']
-        return rle
+            return segm
 
     def annToMask(self, ann, height, width):
         """
@@ -304,8 +300,7 @@ class CocoDataset(utils.Dataset):
         :return: binary mask (numpy 2D array)
         """
         rle = self.annToRLE(ann, height, width)
-        m = maskUtils.decode(rle)
-        return m
+        return maskUtils.decode(rle)
 
 
 ############################################################
